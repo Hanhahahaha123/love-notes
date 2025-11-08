@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>对不起 · 我爱你 · 미안해 사랑해</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                   "Apple SD Gothic Neo", "Noto Sans CJK KR", "PingFang SC", "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url('IMG_6821.jpeg');
+      background-size: cover;
+      background-position: center;
+      filter: blur(6px) brightness(0.6);
+      transform: scale(1.05);
+      animation: floatBG 20s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+
+    @keyframes floatBG {
+      0% { transform: scale(1.05) translateY(0px) translateX(0px); }
+      50% { transform: scale(1.06) translateY(-10px) translateX(8px); }
+      100% { transform: scale(1.05) translateY(0px) translateX(0px); }
+    }
+
+    .center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      z-index: 2;
+      color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 6vw, 48px);
+      font-weight: 900;
+      background: linear-gradient(90deg, #ffb2c4, #ff7a9c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      color: transparent;
+      line-height: 1.3;
+    }
+
+    .btn {
+      appearance: none;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      background: rgba(255, 71, 126, 0.95);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(17,17,17,.25);
+      transition: transform .08s ease;
+      z-index: 2;
+    }
+    .btn:active { transform: translateY(2px); }
+
+    .bottom-text {
+      position: fixed;
+      bottom: 20px;
+      left: 0; right: 0;
+      text-align: center;
+      color: #fff;
+      font-size: 14px;
+      opacity: 0;
+      animation: fadeIn 3s ease 2s forwards;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 0.9; }
+    }
+
+    .notes-area {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .note {
+      position: absolute;
+      min-width: 160px;
+      max-width: 260px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      color: #111;
+      font-size: 14px;
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+      transform: translateZ(0) rotate(var(--rot, 0deg)) scale(0);
+      animation: pop .36s ease forwards;
+      will-change: transform, opacity;
+      line-height: 1.35;
+      background: rgba(255,255,255,0.9);
+    }
+    .tri { display: grid; gap: 4px; }
+    .zh { font-weight: 700; }
+    .en, .ko { font-size: 12.5px; opacity: .95; }
+
+    @keyframes pop {
+      to { transform: rotate(var(--rot, 0deg)) scale(1); }
+    }
+    .fade-out { animation: fade .45s ease forwards; }
+    @keyframes fade { to { opacity: 0; transform: scale(.9) rotate(var(--rot,0deg)); } }
+
+    .heart {
+      position: absolute;
+      width: 14px; height: 14px;
+      transform: rotate(45deg);
+      background: #ff477e;
+      animation: floatUp 4s ease-in infinite;
+      opacity: .7;
+      z-index: 0;
+    }
+    .heart::before, .heart::after {
+      content: "";
+      position: absolute;
+      width: 14px; height: 14px;
+      background: inherit;
+      border-radius: 50%;
+      top: -7px; left: 0;
+    }
+    .heart::after { left: -7px; top: 0; }
+
+    @keyframes floatUp {
+      from { transform: translateY(20px) rotate(45deg); opacity: .0; }
+      10% { opacity: .7; }
+      to   { transform: translateY(-120vh) rotate(45deg); opacity: 0; }
+    }
+
+    .gift {
+      position: fixed;
+      left: 50%; bottom: calc(12px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 1001;
+      display: none;
+    }
+    .confetti {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+    }
+  </style>
+</head>
+<body>
+  <div class="center" id="intro">
+    <h1>对不起 · 我爱你<br/>I'm sorry · I love you<br/>미안해 · 사랑해</h1>
+    <button class="btn" id="startBtn">开始 · Start · 시작</button>
+  </div>
+
+  <div class="notes-area" id="notes"></div>
+  <canvas class="confetti" id="confetti"></canvas>
+  <button class="btn gift" id="giftBtn">收下我的抱抱 💗</button>
+  <div class="bottom-text">Click to start 💗</div>
+
+  <script>
+    const MAX_NOTES = 210;
+    const CREATE_INTERVAL = 110;
+    const AUTO_CLOSE_MS = 28000;
+
+    const COLORS = ["#fff1f5", "#ffe9ec", "#fff6d1", "#e8f9ff", "#e9ffef", "#f1f0ff"];
+
+    const triMessages = [
+      ["对不起，让你失望了。","I'm sorry I let you down.","미안해, 실망시켜서."],
+      ["我会更用心对待你。","I'll be more thoughtful with you.","너를 더 정성껏 대할게."],
+      ["我爱你，不止今天。","I love you, not just today.","오늘만이 아니라 항상 사랑해."],
+      ["谢谢你一直的付出。","Thank you for all you do.","항상 해줘서 고마워."],
+      ["生气也要抱抱你。","Even when you're mad, I want to hug you.","화가 나도 안아줄래."],
+      ["请再相信我一次。","Please trust me again.","한 번만 더 믿어줘."],
+      ["我会做到我说的。","I'll do what I promise.","약속한 건 지킬게."],
+      ["以后让我来安排惊喜。","Let me plan your surprises from now on.","앞으로 깜짝선물은 내가 준비할게."],
+      ["你的心情很重要。","Your feelings matter to me.","네 마음이 제일 중요해."],
+      ["我在这儿，永远站你这边。","I'm here—always on your side.","난 늘 네 편이야."],
+      ["想你，想抱你。","I miss you and want to hold you.","보고 싶고 안아주고 싶어."],
+      ["我会成为让你安心的人。","I'll be someone who makes you feel at ease.","너를 편안하게 하는 사람이 될게."],
+      ["给你所有温柔与耐心。","All my gentleness and patience are yours.","너에게 모든 다정과 인내를 줄게."],
+      ["我们一起把遗憾补上。","Let's make up for the regrets together.","우리 같이 아쉬움을 채우자."],
+      ["今天也是爱你的日子。","Today is another day I love you.","오늘도 사랑하는 날이야."],
+      ["我会更主动地表达。","I'll express myself more often.","더 자주 표현할게."],
+      ["谢谢你愿意告诉我心里的话。","Thank you for telling me how you feel.","네 마음을 말해줘서 고마워."],
+      ["抱歉没有提前准备好。","Sorry I didn't prepare earlier.","미리 준비 못 해서 미안해."],
+      ["请把我留在你身边。","Please keep me by your side.","내 곁에 머물게 해줘."],
+      ["我会学着成为更好的我们。","I'll learn to be better—for us.","우리를 위해 더 나아질게."]
+    ];
+
+    const notesArea = document.getElementById('notes');
+    const intro = document.getElementById('intro');
+    const startBtn = document.getElementById('startBtn');
+    const giftBtn  = document.getElementById('giftBtn');
+    const confetti = document.getElementById('confetti');
+    const ctx = confetti.getContext('2d');
+
+    let timer = null;
+    let heartsTimer = null;
+    let count = 0;
+    let stopped = false;
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function makeNote() {
+      if (stopped) return;
+      if (count >= MAX_NOTES) return;
+      const w = notesArea.clientWidth;
+      const h = notesArea.clientHeight;
+      const x = rand(0, Math.max(0, w - 280));
+      const y = rand(0, Math.max(0, h - 140));
+      const rot = rand(-9, 9);
+      const note = document.createElement('div');
+      note.className = 'note';
+      note.style.left = x + 'px';
+      note.style.top  = y + 'px';
+      note.style.setProperty('--rot', rot + 'deg');
+      note.style.background = COLORS[Math.floor(Math.random()*COLORS.length)];
+      const [zh, en, ko] = pick(triMessages).map(s => s.replace(/\n/g, "<br/>"));
+      note.innerHTML = `<div class="tri">
+          <div class="zh">📝 ${zh}</div>
+          <div class="en">${en}</div>
+          <div class="ko">${ko}</div>
+        </div>`;
+      notesArea.appendChild(note);
+      count++;
+    }
+
+    function makeHearts() {
+      if (stopped) return;
+      const w = notesArea.clientWidth;
+      const h = notesArea.clientHeight;
+      const heart = document.createElement('div');
+      heart.className = 'heart';
+      heart.style.left = rand(0, w) + 'px';
+      heart.style.top  = (h - 10) + 'px';
+      const sz = rand(10, 18);
+      heart.style.width = heart.style.height = sz + 'px';
+      heart.style.animationDuration = rand(3.5, 6) + 's';
+      heart.style.opacity = rand(.3, .8);
+      notesArea.appendChild(heart);
+      setTimeout(() => heart.remove(), 6000);
+    }
+
+    function stopAll() {
+      stopped = true;
+      if (timer) clearInterval(timer);
+      if (heartsTimer) clearInterval(heartsTimer);
+      Array.from(document.querySelectorAll('.note')).forEach(n => n.classList.add('fade-out'));
+      setTimeout(() => { notesArea.innerHTML = ''; }, 450);
+      sprinkle();
+      giftBtn.style.display = 'block';
+    }
+
+    const pieces = [];
+    function sprinkle() {
+      pieces.length = 0;
+      const w = confetti.width  = window.innerWidth;
+      const h = confetti.height = window.innerHeight;
+      for (let i=0;i<160;i++) {
+        pieces.push({
+          x: Math.random()*w, y: Math.random()*-h, r: rand(4,8),
+          vx: rand(-1,1), vy: rand(1.5,3.5), rot: rand(0,360),
+          col: `hsl(${Math.random()*360}, 80%, 60%)`
+        });
+      }
+      requestAnimationFrame(drawConfetti);
+      setTimeout(()=>ctx.clearRect(0,0,confetti.width, confetti.height), 3000);
+    }
+    function drawConfetti() {
+      ctx.clearRect(0,0,confetti.width, confetti.height);
+      pieces.forEach(p=>{
+        p.x += p.vx; p.y += p.vy; p.rot += 5;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot * Math.PI/180);
+        ctx.fillStyle = p.col;
+        ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r);
+        ctx.restore();
+      });
+      if (!stopped) requestAnimationFrame(drawConfetti);
+    }
+
+    startBtn.addEventListener('click', () => {
+      intro.style.display = 'none';
+      stopped = false;
+      count = 0;
+      timer = setInterval(makeNote, CREATE_INTERVAL);
+      heartsTimer = setInterval(makeHearts, 240);
+      setTimeout(stopAll, AUTO_CLOSE_MS);
+    });
+
+    giftBtn.addEventListener('click', () => {
+      alert("对不起 / I'm sorry / 미안해\n我会更用心地爱你 / I'll love you more thoughtfully / 더 잘할게, 사랑해.");
+    });
+
+    window.addEventListener('resize', () => {
+      confetti.width = window.innerWidth;
+      confetti.height = window.innerHeight;
+    }, false);
+  </script>
+</body>
+</html>
